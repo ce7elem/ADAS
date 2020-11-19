@@ -1,9 +1,10 @@
 # target macros
 TARGET := a.out
-MAIN_SRC := main.c
+MAIN_SRC := main.cpp
 
 # compile macros
-DIRS := src1 src2
+#DIRS := src1 src2
+DIRS := 
 OBJS := 
 
 # intermedia compile macros

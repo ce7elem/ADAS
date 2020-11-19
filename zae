@@ -1,0 +1,31 @@
+String msg;
+
+
+// constants won't change. Used here to set a pin number:
+const int ledPin =  LED_BUILTIN;// the number of the LED pin
+
+// Variables will change:
+int ledState = LOW;             // ledState used to set the LED
+
+void setup() {
+  pinMode(ledPin, OUTPUT);
+  Serial.begin(115002);
+}
+
+void loop() {
+
+  if (Serial.available() > 0){
+    String data = Serial.readStringUntil('\n');
+    Serial.print("Recived");
+
+    handleInputs(data);
+
+    ledState = HIGH;
+  }
+
+}
+
+void handleInputs(String data){
+  if (data == "Z")
+    Serial.print("On avance");
+}
