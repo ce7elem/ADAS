@@ -65,8 +65,6 @@ When linking, compiler link all the object files under all the src dirs, recursi
 
 * Running `make` may not work properly if the path of the projet contains blank spaces
 
-## References
+## Dependencies
 
-* (Makefile)[https://github.com/TheNetAdmin/Makefile-Templates]
-* Documentation
-  * (HTML)[https://github.com/egoist/docute]
+* (CppLinuxSerial)[https://github.com/gbmhunter/CppLinuxSerial]

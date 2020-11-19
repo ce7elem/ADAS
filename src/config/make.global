@@ -2,10 +2,10 @@
 MAKEFLAGS := -s --no-print-directory
 
 # compile macro
-CC := gcc
+CC := g++
 
 # compile flags
-CCFLAGS := 
+CCFLAGS := -lCppLinuxSerial
 OBJCCFLAGS := $(CCFLAGS) -c
 
 # recursive make and clean
