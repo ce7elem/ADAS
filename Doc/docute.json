@@ -1,0 +1,21 @@
+{
+  "target": "#docute",
+  "title": "C Project Boilerplate",
+  "darkThemeToggler": true,
+  "layout": "narrow",
+
+  "sidebar": [
+    {
+      "title": "Presentation",
+      "link": "/"
+    },
+    {
+      "title": "Documentation",
+      "children": null
+    },
+    {
+      "title": "Credits",
+      "link": "/credits"
+    }
+  ]
+}
