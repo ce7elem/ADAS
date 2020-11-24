@@ -1,4 +1,4 @@
-OBJS := f1.o
+OBJS := ws.o
 DIRS := 
 
 include $(SUB_MAKE_INCLUDE)
