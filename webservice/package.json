@@ -1,0 +1,9 @@
+{
+  "name": "webservice",
+  "version": "1.0.0",
+  "description": "A web interface that stands for a remote controller",
+  "main": "index.js",
+  "repository": "https://github.com/TERRUSS/ADAS",
+  "author": "TERRUSS",
+  "license": "MIT"
+}
