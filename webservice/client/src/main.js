@@ -7,8 +7,8 @@ import VueSocketIO from 'vue-socket.io'
  
 Vue.use(new VueSocketIO({
     debug: true,
-    // connection: 'http://localhost',
-    connection: 'http://192.168.43.124',
+    connection: 'http://localhost',
+    // connection: 'http://192.168.43.124',
 }))
 
 Vue.config.productionTip = false;

@@ -13,11 +13,4 @@ cmake ..
 make
 sudo make install
 
-cd ../../
-echo "	## boost"
-git clone --recursive https://github.com/boostorg/boost.git
-cd boost
-./bootstrap.sh
-
-
 echo "Setup completed"

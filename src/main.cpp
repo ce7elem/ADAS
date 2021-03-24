@@ -1,11 +1,7 @@
 
 #include "main.hpp"
 
-#include <CppLinuxSerial/SerialPort.hpp>
 #include "utils/rang.hpp"
-
-using namespace mn::CppLinuxSerial;
-
 
 /**
  * ## Main function 
@@ -77,6 +73,10 @@ int main(int argc, char * argv[]) {
 
 #elif defined TEST
 
+#include <CppLinuxSerial/SerialPort.hpp>
+using namespace mn::CppLinuxSerial;
+
+
 int main(int argc, char * argv[]) {
 
 	std::cout << "Starting" << std::endl;
@@ -112,6 +112,11 @@ int main(int argc, char * argv[]) {
 }
 
 #else
+
+
+#include <CppLinuxSerial/SerialPort.hpp>
+using namespace mn::CppLinuxSerial;
+
 
 int main(int argc, char * argv[]) {
 
