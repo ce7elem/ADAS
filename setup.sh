@@ -1,3 +1,4 @@
+#!/bin/bash
 
 echo "# Installing Dependencies"
 
@@ -12,6 +13,7 @@ cmake ..
 make
 sudo make install
 
+cd ../../
 echo "	## boost"
 git clone --recursive https://github.com/boostorg/boost.git
 cd boost
