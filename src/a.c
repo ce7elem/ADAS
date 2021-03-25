@@ -5,22 +5,19 @@
 #include <sys/types.h>
 #include <unistd.h>
   
-int main()
-{
+int main(int argc, char * argv[]){
+  if (argc != 2) return 0;
     int fd;
-  
-    // FIFO file path
-    char * myfifo = "/tmp/myfifo";
   
     // Creating the named file(FIFO)
     // mkfifo(<pathname>, <permission>)
-    mkfifo(myfifo, 0666);
+    //mkfifo(argv[1], 0666);
   
     char arr1[80], arr2[80];
     while (1)
     {
         // Open FIFO for write only
-        fd = open(myfifo, O_WRONLY);
+        fd = open(argv[1], O_WRONLY);
   
         // Take an input arr2ing from user.
         // 80 is maximum length

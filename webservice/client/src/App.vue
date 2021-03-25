@@ -1,9 +1,26 @@
 <template>
 	<div id="app">
 		<div class="hero is-fullheight">
-			<button class="button is-danger is-large" style="position: absolute; top: 20px; right: 20px; z-index: 10000" @click="isComponentModalActive = !isComponentModalActive">
+			<button 
+        class="button is-danger is-large" 
+        style="position: absolute; top: 20px; right: 20px; z-index: 10000" 
+        @click="$refs.myBottomSheet.open()"
+      >
+      <!--
+        @click="isComponentModalActive = !isComponentModalActive"
+      -->
 				🍔
 			</button>
+      <vue-bottom-sheet ref="myBottomSheet" style="z-index: 999999">
+        <div><h1>Autopilot</h1></div>
+        <button
+          class="button is-danger"
+          @click="input({dir: 'RESUME_AUTO'}); $refs.myBottomSheet.close();"
+        >
+          Enable Autopilot
+        </button>
+        <div style="height: 50px"></div>
+      </vue-bottom-sheet>
 			<Control v-if="!isComponentModalActive" @input="input"/>
 <!-- 			<b-carousel @change="changeView" :indicator="false" :arrow="false" :pause-hover="false" :autoplay="false">
 				<b-carousel-item v-for="(currentComponent, i) in components" :key="i" class="is-fullheight">
@@ -19,6 +36,7 @@
 			</b-modal>
 		</div>
 
+    <!--
 		<section class="section hero is-primary has-text-black">
 			<twemoji-textarea
 				:emojiData="emojiDataAll" 
@@ -32,6 +50,7 @@
 			>
 			</twemoji-textarea>
 		</section>
+    -->
 	</div>
 </template>
 
@@ -39,10 +58,10 @@
 import Control from './components/Control.vue'
 import Fridge from './components/Fridge.vue'
 
-import {
+/*import {
 	TwemojiTextarea
 } from '@kevinfaguiar/vue-twemoji-picker';
-
+*/
 export default {
 	name: 'App',
 	data: () => ({
@@ -54,7 +73,7 @@ export default {
 		message: "",
 	}),
 	components: {
-		Control, Fridge, 'twemoji-textarea': TwemojiTextarea
+		Control, Fridge, //'twemoji-textarea': TwemojiTextarea
 	},
 	methods: {
 		changeView: function (data) {
@@ -63,7 +82,8 @@ export default {
 		},
 
 		input(d){
-			this.$socket.emit(d.dir);
+			console.log(d.dir)
+			this.$socket.emit('input', d.dir);
 		},
 	},
 
