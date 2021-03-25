@@ -17,5 +17,12 @@ io.on('connection', (socket) => {
 
 });
 
+app.use(require('express').static(__dirname + '/public'));
+
+app.get('/', (req, res) => {
+	res.sendFile(__dirname + '/index.html');
+	console.log("New client");
+});
+
 
 http.listen(8888)
