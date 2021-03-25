@@ -555,19 +555,24 @@ void processLanes(CvSeq* lines, IplImage* edges, IplImage* temp_frame) {
 
 	//CALCUL LA DISTANCE AVEC LE CENTRE DU MILIEU DE LA DROITE 3
 	int offsetCenter = milieuX3 - temp_frame->width/2;
+	int offsetFront = (temp_frame->width/4)*0.05; //offset ou la voiture va droit
 	int maxOffset = temp_frame->width/4; //taille maximal du offset
 
 	//normalisation du OFFSET en pourcentage
 	int offsetCenterPercent = (100*offsetCenter)/(temp_frame->width/4);
 
+
+
 	//Si le offset est plus grand que le maximum, met le offset a 0 (TOUT DROITE)
 	if (offsetCenter > maxOffset || offsetCenter < -maxOffset){
 		printf("offsetMax : %d | %s\n",maxOffset,"ERREUR MAX OFFSET REACH");
 		offsetCenter = 0;
-	}else if(offsetCenter > 0)
-		printf("offset : %d%% | %s\n",offsetCenterPercent,"DROITE");
+	}else if (offsetCenter < offsetFront && offsetCenter > -offsetFront)
+		printf("offset : %d%% | %s\n",offsetCenterPercent,"FRONT");
+	else if (offsetCenter > 0)
+		printf("offset : %d%% | %s\n",offsetCenterPercent,"RIGHT");
 	else
-		printf("offset : %d%% | %s\n",offsetCenterPercent,"GAUCHE");
+		printf("offset : %d%% | %s\n",offsetCenterPercent,"LEFT");
 
 	//trace le cercle
 	cvCircle(temp_frame, cvPoint(milieuX3, milieuY3), 10,  CV_RGB(255, 0,0), 1);
