@@ -5,10 +5,10 @@ MAIN_SRC := main.cpp
 # compile macros
 #DIRS := src1 src2
 DIRS := 
-OBJS := 
+OBJS :=
 
 # intermedia compile macros
-ALL_OBJS := 
+ALL_OBJS := controllers.cpp 
 CLEAN_FILES := $(TARGET) $(OBJS)
 DIST_CLEAN_FILES := $(OBJS)
 

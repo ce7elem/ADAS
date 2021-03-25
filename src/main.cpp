@@ -1,6 +1,13 @@
 
-#include "main.hpp"
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <thread>
 
+#include "main.hpp"
+#include "controllers.hpp"
 #include "utils/rang.hpp"
 
 /**
@@ -8,148 +15,29 @@
  * > int main (int argc, char * argv)
  *
  * Entry point of the program
+ * Starts two threads :
+ *  - a listener for the remote controller
+ *  - a listener for the FLYEYES3000 visual detection
  *
  * ### Parameters
- * 	int argc :  number of parameters
- * 	char * argv : array of parameters
  *
  * ### Returns
  *	int : return 0 all the time
  */
-
-
-#ifdef DEBUG
-
-#include "debug/debug.hpp"
-
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <stdio.h>
-#define MAX_BUF 1024
-
-
 int main(int argc, char * argv[]) {
 
-	std::cout << "Starting DEBUG MODE" << std::endl;
+  system("rm /tmp/rcontroller /tmp/flyeyesi 2> /dev/null");
+	mkfifo("/tmp/rcontroller", 0666);
+	mkfifo("/tmp/flyeyes", 0666);
 
-	// Get some ASCII data
+  std::thread rcTread (listenRController);
+  sleep(1);
+  std::thread flyEyesTread (listenFlyEyes);
 
-	char input[10];
-
-	int fd;
-
-	char myfifo[] = "/tmp/myfifo";
-	mkfifo(myfifo, 0666);
-
-	char input_buf[MAX_BUF];
-
-
-	for(;;) {
-
-		fd = open(myfifo, O_RDONLY);
-		read(fd, input_buf, MAX_BUF);
-		close(fd);
-
-		int i;
-		for (i = 0; input_buf[i] != '\n'; i++){}input_buf[i] = 0;
-		std::cout << RPI << input_buf << std::endl;
-		
-/*		input[1] = 0;
-		std::cout << ARDUINO << input << std::endl;
-*/
-		
-		// Read some data back (will block until at least 1 byte is received due to the SetTimeout(-1) call above)
-	}
-	
+  rcTread.join();                // pauses until first finishes
+  flyEyesTread.join(); 
+  
 	std::cout << "End" << std::endl;
+
+  return 0;
 }
-
-
-
-
-
-
-#elif defined TEST
-
-#include <CppLinuxSerial/SerialPort.hpp>
-using namespace mn::CppLinuxSerial;
-
-
-int main(int argc, char * argv[]) {
-
-	std::cout << "Starting" << std::endl;
-
-	// Create serial port object and open serial port
-	SerialPort serialPort("/dev/ttyACM1", 115002);
-
-	serialPort.SetTimeout(500); // Block when reading until any data is received
-	serialPort.Open();
-
-	// Write some ASCII data
-
-	char input[10];
-	for(;;) {
-		std::cout << "Dir > " ;
-		std::cin >> input;
-		
-		input[1] = '\n';
-		serialPort.Write(input);
-		
-		// Read some data back (will block until at least 1 byte is received due to the SetTimeout(-1) call above)
-		std::string readData;
-		serialPort.Read(readData);
-
-		std::cout << readData << std::endl;
-	}
-	
-
-	// Close the serial port
-	serialPort.Close();
-
-	std::cout << "End" << std::endl;
-}
-
-#else
-
-
-#include <CppLinuxSerial/SerialPort.hpp>
-using namespace mn::CppLinuxSerial;
-
-
-int main(int argc, char * argv[]) {
-
-	std::cout << "Starting PROD MODE" << std::endl;
-
-	// Create serial port object and open serial port
-	SerialPort serialPort("/dev/ttyACM1", 115002);
-
-	serialPort.SetTimeout(500); // Block when reading until any data is received
-	serialPort.Open();
-
-	// Write some ASCII data
-
-	char input[10];
-	for(;;) {
-		std::cout << "Dir > " ;
-		std::cin >> input;
-		
-		input[1] = '\n';
-		serialPort.Write(input);
-		
-		// Read some data back (will block until at least 1 byte is received due to the SetTimeout(-1) call above)
-		std::string readData;
-		serialPort.Read(readData);
-
-		std::cout << readData << std::endl;
-	}
-	
-
-	// Close the serial port
-	serialPort.Close();
-
-	std::cout << "End" << std::endl;
-}
-
-#endif

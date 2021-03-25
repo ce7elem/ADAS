@@ -5,7 +5,7 @@ MAKEFLAGS := -s --no-print-directory
 CC := g++
 
 # compile flags
-CCFLAGS := -lCppLinuxSerial
+CCFLAGS := -lCppLinuxSerial -lpthread
 OBJCCFLAGS := $(CCFLAGS) -c
 
 # recursive make and clean

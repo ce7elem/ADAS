@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@kevinfaguiar/vue-twemoji-picker": "^5.5.5",
+    "@webzlodimir/vue-bottom-sheet": "^1.2.0",
     "buefy": "^0.8.15",
     "core-js": "^3.6.4",
     "nipplejs": "^0.8.5",

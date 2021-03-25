@@ -3,11 +3,16 @@ import App from "./App.vue";
 import Buefy from "buefy";
 import "buefy/dist/buefy.css";
 
-import VueSocketIO from 'vue-socket.io'
+import VueSocketIO from 'vue-socket.io';
+
+import VueBottomSheet from "@webzlodimir/vue-bottom-sheet";
+
+Vue.use(VueBottomSheet);
+
  
 Vue.use(new VueSocketIO({
     debug: true,
-    connection: 'http://localhost',
+    connection: 'http://localhost:8888',
     // connection: 'http://192.168.43.124',
 }))
 

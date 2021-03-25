@@ -1285,6 +1285,13 @@
     "@webassemblyjs/wast-parser" "1.9.0"
     "@xtuc/long" "4.2.2"
 
+"@webzlodimir/vue-bottom-sheet@^1.2.0":
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/@webzlodimir/vue-bottom-sheet/-/vue-bottom-sheet-1.2.0.tgz#55f923f50f2c4c8c6402f8dccb769ba83d21201b"
+  integrity sha512-TFE52wY2nIvadB+LobxiByZAU7PpFD+PchKe0hQ3k/0PufRhCfKuRheYVyCBwwWmKGwZL0mTh42eWcbSdYdhyg==
+  dependencies:
+    hammerjs "^2.0.8"
+
 "@xtuc/ieee754@^1.2.0":
   version "1.2.0"
   resolved "https://registry.npm.taobao.org/@xtuc/ieee754/download/@xtuc/ieee754-1.2.0.tgz#eef014a3145ae477a1cbc00cd1e552336dceb790"
@@ -3950,6 +3957,11 @@ gzip-size@^5.0.0:
   dependencies:
     duplexer "^0.1.1"
     pify "^4.0.1"
+
+hammerjs@^2.0.8:
+  version "2.0.8"
+  resolved "https://registry.yarnpkg.com/hammerjs/-/hammerjs-2.0.8.tgz#04ef77862cff2bb79d30f7692095930222bf60f1"
+  integrity sha1-BO93hiz/K7edMPdpIJWTAiK/YPE=
 
 handle-thing@^2.0.0:
   version "2.0.1"
