@@ -1,3 +1,4 @@
+#!/bin/bash
 
 echo "# Installing Dependencies"
 
@@ -11,11 +12,5 @@ cd build
 cmake ..
 make
 sudo make install
-
-echo "	## boost"
-git clone --recursive https://github.com/boostorg/boost.git
-cd boost
-./bootstrap.sh
-
 
 echo "Setup completed"

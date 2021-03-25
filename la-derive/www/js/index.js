@@ -5,6 +5,9 @@
     by Tom Igoe
 */
 
+// https://github.com/don/BluetoothSerial/blob/master/examples/SimpleSerial/www/js/index.js
+
+
 
 var app = {
     macAddress: "AA:BB:CC:DD:EE:FF",  // get your mac address from bluetoothSerial.list
@@ -36,7 +39,8 @@ var app = {
             // list the available BT ports:
             bluetoothSerial.list(
                 function(results) {
-                    app.bluetoothselect(results);
+                	// app.bluetoothselect(results)
+                    app.display(JSON.stringify(results));
                 },
                 function(error) {
                     app.display(JSON.stringify(error));
@@ -59,8 +63,6 @@ var app = {
     Connects if not connected, and disconnects if connected:
 */
     manageConnection: function() {
-
-    	app.macAddress = document.getElementById("bleSelect").value
 
         // connect() will get called only if isConnected() (below)
         // returns failure. In other words, if not connected, then connect:
@@ -104,8 +106,6 @@ var app = {
         // set up a listener to listen for newlines
         // and display any new data that's come in since
         // the last newline:
-        bluetoothSerial.write("Hi", ok=>console.log(ok), err=>console.log(err));
-
         bluetoothSerial.subscribe('\n', function (data) {
             app.clear();
             app.display(data);
@@ -164,5 +164,4 @@ var app = {
         var display = document.getElementById("message");
         display.innerHTML = "";
     }
-};      // end of app
-
+};     
