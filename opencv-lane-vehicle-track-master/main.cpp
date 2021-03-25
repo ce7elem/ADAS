@@ -6,7 +6,7 @@
 #include <math.h>
 #include "utils.h"
 
-//#define USE_VIDEO 1
+#define USE_VIDEO 0
 //#define _DEBUG 1
 
 #undef MIN
@@ -510,12 +510,13 @@ void processLanes(CvSeq* lines, IplImage* edges, IplImage* temp_frame) {
     }
 
 	// show Hough lines
+	
 	for	(int i=0; i<right.size(); i++) {
-		cvLine(temp_frame, right[i].p0, right[i].p1, CV_RGB(0, 0, 255), 2);
+		cvLine(temp_frame, right[i].p0, right[i].p1, CV_RGB(0, 0, 255), 1);
 	}
 
 	for	(int i=0; i<left.size(); i++) {
-		cvLine(temp_frame, left[i].p0, left[i].p1, CV_RGB(255, 0, 0), 2);
+		cvLine(temp_frame, left[i].p0, left[i].p1, CV_RGB(255, 0, 0), 1);
 	}
 
 	processSide(left, edges, false);
@@ -524,17 +525,62 @@ void processLanes(CvSeq* lines, IplImage* edges, IplImage* temp_frame) {
 	// show computed lanes
 	int x = temp_frame->width * 0.55f;
 	int x2 = temp_frame->width;
-	cvLine(temp_frame, cvPoint(x, laneR.k.get()*x + laneR.b.get()), 
-		cvPoint(x2, laneR.k.get() * x2 + laneR.b.get()), CV_RGB(255, 0, 255), 2);
+	cvLine(temp_frame, cvPoint(x, laneR.k.get()*x + laneR.b.get()), cvPoint(x2, laneR.k.get() * x2 + laneR.b.get()), CV_RGB(255, 0, 255), 2);
+	//printf("RIGHT : k :%f   -   b :%f , coord: p1(%d,%f) p2(%d,%f)\n",laneR.k.get(),laneR.b.get(),x,laneR.k.get()*x + laneR.b.get(),x2,laneR.k.get() * x2 + laneR.b.get());
+	
+	//CACUL DU MILEU DROITE
+	int milieuY1 = temp_frame->height/2; //Milieu de la frame
+	int milieuX1 = (milieuY1-laneR.b.get())/laneR.k.get();// (X = (Y-B)/A) Cacul x en fonction de y (centre de la fenetre)
 
 	x = temp_frame->width * 0;
 	x2 = temp_frame->width * 0.45f;
-	cvLine(temp_frame, cvPoint(x, laneL.k.get()*x + laneL.b.get()), 
-		cvPoint(x2, laneL.k.get() * x2 + laneL.b.get()), CV_RGB(255, 0, 255), 2);
+	cvLine(temp_frame, cvPoint(x, laneL.k.get()*x + laneL.b.get()), cvPoint(x2, laneL.k.get() * x2 + laneL.b.get()), CV_RGB(255, 0, 255), 2);
+	//printf("LEFT : k :%f   -   b :%f , coord: p1(%d,%f) p2(%d,%f)\n",laneL.k.get(),laneL.b.get(),x,laneL.k.get()*x + laneL.b.get(),x2,laneL.k.get() * x2 + laneL.b.get());
+	
+	//CACUL DU MILEU DROITE
+	int milieuY2 = temp_frame->height/2; //Milieu de la frame
+	int milieuX2 = (milieuY2-laneL.b.get())/laneL.k.get(); // (X = (Y-B)/A) Cacul x en fonction de y (centre de la fenetre)
+
+	//CACUL DE LA DROITE 3 (en fonction du milieu des droite gauche et droite)
+	int milieuX3 = (milieuX1+milieuX2)/2;
+	int milieuY3 = (milieuY1+milieuY2)/2;
+
+	/*
+	//CALCUL DE L'ANGLE DU VIRAGE
+	float dx = milieuX2-milieuX1;
+	float dy = milieuY2-milieuY1;
+	float a = -dy/dx;
+	float b = milieuY1 - a*milieuX1;
+	*/
+
+	//CALCUL LA DISTANCE AVEC LE CENTRE DU MILIEU DE LA DROITE 3
+	int offsetCenter = milieuX3 - temp_frame->width/2;
+	int offsetFront = (temp_frame->width/4)*0.05; //offset ou la voiture va droit
+	int maxOffset = temp_frame->width/4; //taille maximal du offset
+
+	//normalisation du OFFSET en pourcentage
+	int offsetCenterPercent = (100*offsetCenter)/(temp_frame->width/4);
+
+
+
+	//Si le offset est plus grand que le maximum, met le offset a 0 (TOUT DROITE)
+	if (offsetCenter > maxOffset || offsetCenter < -maxOffset){
+		printf("offsetMax : %d | %s\n",maxOffset,"ERREUR MAX OFFSET REACH");
+		offsetCenter = 0;
+	}else if (offsetCenter < offsetFront && offsetCenter > -offsetFront)
+		printf("offset : %d%% | %s\n",offsetCenterPercent,"FRONT");
+	else if (offsetCenter > 0)
+		printf("offset : %d%% | %s\n",offsetCenterPercent,"RIGHT");
+	else
+		printf("offset : %d%% | %s\n",offsetCenterPercent,"LEFT");
+
+	//trace le cercle
+	cvCircle(temp_frame, cvPoint(milieuX3, milieuY3), 10,  CV_RGB(255, 0,0), 1);
+	//trace la DROITE 3
+	cvLine(temp_frame, cvPoint(milieuX1,milieuY1), cvPoint(milieuX2,milieuY2), CV_RGB(255, 125, 0), 1);
 }
 
-int main(void)
-{
+int main(void){
 
 #ifdef USE_VIDEO
 	CvCapture *input_video = cvCreateFileCapture("road.mp4");
@@ -565,9 +611,10 @@ int main(void)
 	IplImage *half_frame = cvCreateImage(cvSize(video_size.width/2, video_size.height/2), IPL_DEPTH_8U, 3);
 
 	CvMemStorage* houghStorage = cvCreateMemStorage(0);
+	/*
 	CvMemStorage* haarStorage = cvCreateMemStorage(0);
 	CvHaarClassifierCascade* cascade = (CvHaarClassifierCascade*)cvLoad("bin/haar/cars3.xml");
-
+	*/
 	//cvSetCaptureProperty(input_video, CV_CAP_PROP_POS_FRAMES, current_frame);
 	while(key_pressed != 27) {
 
@@ -598,30 +645,40 @@ int main(void)
 		processLanes(lines, edges, temp_frame);
 		
 		// process vehicles
+		/*
 		vehicleDetection(half_frame, cascade, haarStorage);
 
 		drawVehicles(half_frame);
-		cvShowImage("Half-frame", half_frame);
 		cvMoveWindow("Half-frame", half_frame->width*2+10, 0); 
+		*/
+		
+
 
 		// show middle line
-		cvLine(temp_frame, cvPoint(frame_size.width/2,0), 
-			cvPoint(frame_size.width/2,frame_size.height), CV_RGB(255, 255, 0), 1);
+		cvLine(temp_frame, cvPoint(frame_size.width/2,0), cvPoint(frame_size.width/2,frame_size.height), CV_RGB(255, 255, 0), 1);
 
-		cvShowImage("Grey", grey);
-		cvShowImage("Edges", edges);
-		cvShowImage("Color", temp_frame);
+		//cvShowImage("Grey", grey);
+		//cvShowImage("Edges", edges);
+		cvShowImage("LINES FRAME", temp_frame);
+		cvShowImage("FULL VIDEO", half_frame);
+		cvMoveWindow("LINES FRAME", 0, frame_size.height+25);
+		cvMoveWindow("FULL VIDEO", 0, 2*(frame_size.height+25)); 
 		
+		// move windows
+		/*
 		cvMoveWindow("Grey", 0, 0); 
 		cvMoveWindow("Edges", 0, frame_size.height+25);
 		cvMoveWindow("Color", 0, 2*(frame_size.height+25)); 
+		*/
 
 
 		key_pressed = cvWaitKey(5);
 	}
 
+	/*
 	cvReleaseHaarClassifierCascade(&cascade);
 	cvReleaseMemStorage(&haarStorage);
+	*/
 	cvReleaseMemStorage(&houghStorage);
 
 	cvReleaseImage(&grey);
