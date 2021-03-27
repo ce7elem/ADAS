@@ -6,7 +6,7 @@
 #include <math.h>
 #include "utils.h"
 
-#define USE_VIDEO 0
+//#define USE_VIDEO 1
 //#define _DEBUG 1
 
 #undef MIN
@@ -379,10 +379,13 @@ void processSide(std::vector<Lane> lanes, IplImage *edges, bool right) {
 
 	// response search
 	int w = edges->width;
+
+	
 	int h = edges->height;
 	const int BEGINY = 0;
 	const int ENDY = h-1;
 	const int ENDX = right ? (w-BORDERX) : BORDERX;
+	printf("%d fin = %d\n",w/2,ENDX);
 	int midx = w/2;
 	int midy = edges->height/2;
 	unsigned char* ptr = (unsigned char*)edges->imageData;
@@ -512,11 +515,11 @@ void processLanes(CvSeq* lines, IplImage* edges, IplImage* temp_frame) {
 	// show Hough lines
 	
 	for	(int i=0; i<right.size(); i++) {
-		cvLine(temp_frame, right[i].p0, right[i].p1, CV_RGB(0, 0, 255), 1);
+		cvLine(temp_frame, right[i].p0, right[i].p1, CV_RGB(0, 0, 255), 2);
 	}
 
 	for	(int i=0; i<left.size(); i++) {
-		cvLine(temp_frame, left[i].p0, left[i].p1, CV_RGB(255, 0, 0), 1);
+		cvLine(temp_frame, left[i].p0, left[i].p1, CV_RGB(255, 0, 0), 2);
 	}
 
 	processSide(left, edges, false);
@@ -604,7 +607,7 @@ int main(void){
 	int key_pressed = 0;
 	IplImage *frame = NULL;
 
-	CvSize frame_size = cvSize(video_size.width, video_size.height/2);
+	CvSize frame_size = cvSize(video_size.width-1, video_size.height/2);
 	IplImage *temp_frame = cvCreateImage(frame_size, IPL_DEPTH_8U, 3);
 	IplImage *grey = cvCreateImage(frame_size, IPL_DEPTH_8U, 1);
 	IplImage *edges = cvCreateImage(frame_size, IPL_DEPTH_8U, 1);
@@ -625,7 +628,7 @@ int main(void){
 		}
 
 		cvPyrDown(frame, half_frame, CV_GAUSSIAN_5x5); // Reduce the image by 2	 
-		//cvCvtColor(temp_frame, grey, CV_BGR2GRAY); // convert to grayscale
+		cvCvtColor(temp_frame, grey, CV_BGR2GRAY); // convert to grayscale
 
 		// we're interested only in road below horizont - so crop top image portion off
 		crop(frame, temp_frame, cvRect(0,frame_size.height,frame_size.width,frame_size.height));
