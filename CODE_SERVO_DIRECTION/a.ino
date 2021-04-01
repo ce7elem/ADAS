@@ -19,10 +19,16 @@ int angle;
 
 char buf[20];
 
+Servo dservo;
+
 void setup() {
+  dservo.attach(2);
+  dservo.write(0);
+  
   DCmotor.attach(5);
   DCmotor.writeMicroseconds(BRAKE);
-  Serial.begin(115200); // opens serial port, sets data rate to 9600 bps
+  
+  Serial.begin(115200); // opens serial port
   //Serial.println("Starting");
 }
 
@@ -36,7 +42,7 @@ bool catchFlags (char * token) {
       //Serial.println("Brk mode");
     return true;
   }
-
+  
   if ( strcmp(token, "GEAR_1") == 0) {
       DCmotor.writeMicroseconds(ACC4);
       //Serial.println("ACC4");
@@ -61,17 +67,28 @@ bool catchFlags (char * token) {
     return true;
   }
 
+/*
   if (first) {
     DCmotor.writeMicroseconds(ACC4);
     first = false;
   }
-
+*/
   return false;
 }
 
 
-void handleTurn (int angle){
-  
+
+void handleTurn (int percentage){
+
+  // compute the angle from percentages
+  int angle = constrain(percentage * 30 / 100, -30, 30);
+  Serial.print("turn ");
+  Serial.println(angle);
+
+  for (int i = 0; i < angle; i++) {
+    dservo.write(i);
+    delay(10);
+  }
 }
 
 
@@ -122,9 +139,8 @@ void loop() {
       angle = atoi(inData);
       if (angle != 0) {
         Serial.println(angle);
-        angle = 0;
-  
         handleTurn(angle);
+        angle = 0;
       }
 
       // reset variables for next token
@@ -134,48 +150,6 @@ void loop() {
       inData[index] = 0;
     }
   }
-  /*
-    if(incomingByte == '1')
-    {
-      DCmotor.writeMicroseconds(ACC1);
-      Serial.println("Ac mode");
-      state = incomingByte;
-      
-    }
 
-    else if(incomingByte == '0')
-    {
-      DCmotor.writeMicroseconds(BRAKE);
-      Serial.println("Brk mode"); 
-      state= incomingByte;
-    }
-    
-    if(incomingByte == '2')
-    {
-      DCmotor.writeMicroseconds(ACC2);
-      Serial.println("Ac mode");
-      state = incomingByte;
-      
-    }
-
-    if(incomingByte == '3')
-    {
-      DCmotor.writeMicroseconds(ACC3);
-      Serial.println("Ac mode");
-      state = incomingByte;
-      
-    }
-
-    if(incomingByte == '4')
-    {
-      
-      
-    }
-
-    else
-    {
-      incomingByte = state;
-    }
-    */
-    
+  
 }
