@@ -1,15 +1,19 @@
 
 #include <stdio.h>
-#include <fcntl.h>
-#include <unistd.h>
+#include <string.h>
+
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include <opencv2/opencv.hpp>
 #include <math.h>
 #include "utils.h"
 
+#include <fstream>
+
 //#define USE_VIDEO 1
 //#define _DEBUG 1
+#define MONIT 1
+//#define HOUGH_LINE 1
 
 #undef MIN
 #undef MAX
@@ -40,28 +44,12 @@ struct Status {
 	int lost;
 };
 
-struct Vehicle {
-	CvPoint bmin, bmax;
-	int symmetryX;
-	bool valid;
-	unsigned int lastUpdate;
-};
-
-struct VehicleSample {
-	CvPoint center;
-	float radi;
-	unsigned int frameDetected;
-	int vehicleIndex;
-};
-
 #define GREEN CV_RGB(0,255,0)
 #define RED CV_RGB(255,0,0)
 #define BLUE CV_RGB(255,0,255)
 #define PURPLE CV_RGB(255,0,255)
 
 Status laneR, laneL;
-std::vector<Vehicle> vehicles;
-std::vector<VehicleSample> samples;
 
 enum{
     SCAN_STEP = 5,			  // in pixels
@@ -80,9 +68,7 @@ enum{
 	CAR_DETECT_LINES = 4,    // minimum lines for a region to pass validation as a 'CAR'
 	CAR_H_LINE_LENGTH = 10,  // minimum horizontal line length from car body in px
 
-	MAX_VEHICLE_SAMPLES = 30,      // max vehicle detection sampling history
-	CAR_DETECT_POSITIVE_SAMPLES = MAX_VEHICLE_SAMPLES-2, // probability positive matches for valid car
-	MAX_VEHICLE_NO_UPDATE_FREQ = 15 // remove car after this much no update frames
+	
 };
 
 #define K_VARY_FACTOR 0.2f
@@ -200,181 +186,6 @@ int horizLine(IplImage* edges, int x, int y, CvPoint bmin, CvPoint bmax, int max
 	return left+right;
 }
 
-bool vehicleValid(IplImage* half_frame, IplImage* edges, Vehicle* v, int& index) {
-
-	index = -1;
-
-	// first step: find horizontal symmetry axis
-	v->symmetryX = findSymmetryAxisX(half_frame, v->bmin, v->bmax);
-	if (v->symmetryX == -1) return false;
-
-	// second step: cars tend to have a lot of horizontal lines
-	int hlines = 0;
-	for (int y = v->bmin.y; y < v->bmax.y; y++) {		
-		if (horizLine(edges, v->symmetryX, y, v->bmin, v->bmax, 2) > CAR_H_LINE_LENGTH) {
-#if _DEBUG
-			cvCircle(half_frame, cvPoint(v->symmetryX, y), 2, PURPLE);
-#endif
-			hlines++;
-		}
-	}
-
-	int midy = (v->bmax.y + v->bmin.y)/2;
-
-	// third step: check with previous detected samples if car already exists
-	int numClose = 0;
-	float closestDist = 0;
-	for (int i = 0; i < samples.size(); i++) {
-		int dx = samples[i].center.x - v->symmetryX;
-		int dy = samples[i].center.y - midy;
-		float Rsqr = dx*dx + dy*dy;
-		
-		if (Rsqr <= samples[i].radi*samples[i].radi) {
-			numClose++;
-			if (index == -1 || Rsqr < closestDist) {
-				index = samples[i].vehicleIndex;
-				closestDist = Rsqr;
-			}
-		}
-	}
-
-	return (hlines >= CAR_DETECT_LINES || numClose >= CAR_DETECT_POSITIVE_SAMPLES);
-}
-
-void removeOldVehicleSamples(unsigned int currentFrame) {
-	// statistical sampling - clear very old samples
-	std::vector<VehicleSample> sampl;
-	for (int i = 0; i < samples.size(); i++) {
-		if (currentFrame - samples[i].frameDetected < MAX_VEHICLE_SAMPLES) {
-			sampl.push_back(samples[i]);
-		}
-	}
-	samples = sampl;
-}
-
-void removeSamplesByIndex(int index) {
-	// statistical sampling - clear very old samples
-	std::vector<VehicleSample> sampl;
-	for (int i = 0; i < samples.size(); i++) {
-		if (samples[i].vehicleIndex != index) {
-			sampl.push_back(samples[i]);
-		}
-	}
-	samples = sampl;
-}
-
-void removeLostVehicles(unsigned int currentFrame) {
-	// remove old unknown/false vehicles & their samples, if any
-	for (int i=0; i<vehicles.size(); i++) {
-		if (vehicles[i].valid && currentFrame - vehicles[i].lastUpdate >= MAX_VEHICLE_NO_UPDATE_FREQ) {
-			printf("\tremoving inactive car, index = %d\n", i);
-			removeSamplesByIndex(i);
-			vehicles[i].valid = false;
-		}
-	}
-}
-
-void vehicleDetection(IplImage* half_frame, CvHaarClassifierCascade* cascade, CvMemStorage* haarStorage) {
-
-	static unsigned int frame = 0;
-	frame++;
-	printf("\t*** vehicle detector frame: %d ***\n", frame);
-
-
-	removeOldVehicleSamples(frame);
-
-	// Haar Car detection
-	const double scale_factor = 1.05; // every iteration increases scan window by 5%
-	const int min_neighbours = 2; // minus 1, number of rectangles, that the object consists of
-
-
-	CvSeq* rects = cvHaarDetectObjects(half_frame, cascade, haarStorage, scale_factor, min_neighbours, CV_HAAR_DO_CANNY_PRUNING);
-
-
-
-	// Canny edge detection of the minimized frame
-	if (rects->total > 0) {
-		printf("\t[haar detected] %d car hypotheses\n", rects->total);
-		IplImage *edges = cvCreateImage(cvSize(half_frame->width, half_frame->height), IPL_DEPTH_8U, 1);
-		cvCanny(half_frame, edges, CANNY_MIN_TRESHOLD, CANNY_MAX_TRESHOLD);
-
-
-		/* validate vehicles */
-		for (int i = 0; i < rects->total; i++) {
-			CvRect* rc = (CvRect*)cvGetSeqElem(rects, i);
-			
-			Vehicle v;
-			v.bmin = cvPoint(rc->x, rc->y);
-			v.bmax = cvPoint(rc->x + rc->width, rc->y + rc->height);
-			v.valid = true;
-
-			int index;
-			if (vehicleValid(half_frame, edges, &v, index)) { // put a sample on that position
-				
-				if (index == -1) { // new car detected
-
-					v.lastUpdate = frame;
-
-					// re-use already created but inactive vehicles
-					for(int j=0; j<vehicles.size(); j++) {
-						if (vehicles[j].valid == false) {
-							index = j;
-							break;
-						}
-					}
-					if (index == -1) { // all space used
-						index = vehicles.size();
-						vehicles.push_back(v);
-					}
-					printf("\tnew car detected, index = %d\n", index);
-				} else {
-					// update the position from new data
-					vehicles[index] = v;
-					vehicles[index].lastUpdate = frame;
-					printf("\tcar updated, index = %d\n", index);
-				}
-
-				VehicleSample vs;
-				vs.frameDetected = frame;
-				vs.vehicleIndex = index;
-				vs.radi = (MAX(rc->width, rc->height))/4; // radius twice smaller - prevent false positives
-				vs.center = cvPoint((v.bmin.x+v.bmax.x)/2, (v.bmin.y+v.bmax.y)/2);
-				samples.push_back(vs);
-			}
-		}
-
-		cvShowImage("Half-frame[edges]", edges);
-		cvMoveWindow("Half-frame[edges]", half_frame->width*2+10, half_frame->height); 
-		cvReleaseImage(&edges);
-	} else {
-		printf("\t[NO vehicles detected] in current frame!\n");
-	}
-
-
-	removeLostVehicles(frame);
-
-	//printf("\ttotal vehicles on screen: %lu\n", vehicles.size());
-}
-
-void drawVehicles(IplImage* half_frame) {
-
-	// show vehicles
-	for (int i = 0; i < vehicles.size(); i++) {
-		Vehicle* v = &vehicles[i];
-		if (v->valid) {
-			cvRectangle(half_frame, v->bmin, v->bmax, GREEN, 1);
-			
-			int midY = (v->bmin.y + v->bmax.y) / 2;
-			cvLine(half_frame, cvPoint(v->symmetryX, midY-10), cvPoint(v->symmetryX, midY+10), PURPLE);
-		}
-	}
-
-	// show vehicle position sampling
-	for (int i = 0; i < samples.size(); i++) {
-		cvCircle(half_frame, cvPoint(samples[i].center.x, samples[i].center.y), samples[i].radi, RED);
-	}
-}
-
 void processSide(std::vector<Lane> lanes, IplImage *edges, bool right) {
 
 	Status* side = right ? &laneR : &laneL;
@@ -451,7 +262,7 @@ void processSide(std::vector<Lane> lanes, IplImage *edges, bool right) {
 
 		bool update_ok = (k_diff <= K_VARY_FACTOR && b_diff <= B_VARY_FACTOR) || side->reset;
 
-		//printf("[LIGNE TROUVÉ] side: %s, k vary: %.4f, b vary: %.4f, lost: %s\n", (right?"RIGHT":"LEFT"), k_diff, b_diff, (update_ok?"no":"yes"));
+		printf("[LIGNE TROUVÉ] side: %s, k vary: %.4f, b vary: %.4f, lost: %s\n", (right?"RIGHT":"LEFT"), k_diff, b_diff, (update_ok?"no":"yes"));
 		
 		if (update_ok) {
 			// update is in valid bounds
@@ -468,7 +279,7 @@ void processSide(std::vector<Lane> lanes, IplImage *edges, bool right) {
 		}
 
 	} else {
-		//printf("[PAS DE LIGNE TROUVÉ] - lane tracking lost! counter increased\n");
+		printf("[PAS DE LIGNE TROUVÉ] - lane tracking lost! counter increased\n");
 		side->lost++;
 		if (side->lost >= MAX_LOST_FRAMES && !side->reset) {
 			// do full reset when lost for more than N frames
@@ -512,8 +323,8 @@ void processLanes(CvSeq* lines, IplImage* edges, IplImage* temp_frame) {
 		}
     }
 
+	#ifdef HOUGH_LINE
 	// show Hough lines
-	/**
 	for	(int i=0; i<right.size(); i++) {
 		cvLine(temp_frame, right[i].p0, right[i].p1, CV_RGB(0, 0, 255), 1);
 	}
@@ -521,7 +332,8 @@ void processLanes(CvSeq* lines, IplImage* edges, IplImage* temp_frame) {
 	for	(int i=0; i<left.size(); i++) {
 		cvLine(temp_frame, left[i].p0, left[i].p1, CV_RGB(255, 0, 0), 1);
 	}
-	*/
+	
+	#endif
 
 	processSide(left, edges, false);
 	processSide(right, edges, true);
@@ -530,7 +342,7 @@ void processLanes(CvSeq* lines, IplImage* edges, IplImage* temp_frame) {
 	int x = temp_frame->width * 0.55f;
 	int x2 = temp_frame->width;
 	cvLine(temp_frame, cvPoint(x, laneR.k.get()*x + laneR.b.get()), cvPoint(x2, laneR.k.get() * x2 + laneR.b.get()), CV_RGB(255, 0, 255), 2);
-	//printf("RIGHT : k :%f   -   b :%f , coord: p1(%d,%f) p2(%d,%f)\n",laneR.k.get(),laneR.b.get(),x,laneR.k.get()*x + laneR.b.get(),x2,laneR.k.get() * x2 + laneR.b.get());
+	
 	
 	//CACUL DU MILEU DROITE
 	int milieuY1 = temp_frame->height/2; //Milieu de la frame
@@ -539,7 +351,7 @@ void processLanes(CvSeq* lines, IplImage* edges, IplImage* temp_frame) {
 	x = temp_frame->width * 0;
 	x2 = temp_frame->width * 0.45f;
 	cvLine(temp_frame, cvPoint(x, laneL.k.get()*x + laneL.b.get()), cvPoint(x2, laneL.k.get() * x2 + laneL.b.get()), CV_RGB(255, 0, 255), 2);
-	//printf("LEFT : k :%f   -   b :%f , coord: p1(%d,%f) p2(%d,%f)\n",laneL.k.get(),laneL.b.get(),x,laneL.k.get()*x + laneL.b.get(),x2,laneL.k.get() * x2 + laneL.b.get());
+	
 	
 	//CACUL DU MILEU DROITE
 	int milieuY2 = temp_frame->height/2; //Milieu de la frame
@@ -565,40 +377,38 @@ void processLanes(CvSeq* lines, IplImage* edges, IplImage* temp_frame) {
 	//normalisation du OFFSET en pourcentage
 	int offsetCenterPercent = (100*offsetCenter)/(temp_frame->width/4);
 
-
 	char string[10];
-	int fd = open("/tmp/flyeyes",O_WRONLY);
+	std::ofstream outfile ("/tmp/flyeyes",std::ofstream::binary);
 	//Si le offset est plus grand que le maximum, met le offset a 0 (TOUT DROITE)
 	if (offsetCenter > maxOffset || offsetCenter < -maxOffset){
-		
-		sprintf(string,"%s","ERREUR");
-		//printf("%s","ERREUR");
+		sprintf(string,"%s\n","ERREUR");printf("%s","ERREUR");
 		offsetCenter = 0;
-	}else if (offsetCenter < offsetFront && offsetCenter > -offsetFront)
-		sprintf(string,"%d",0);
-		//printf("%d",0);
-	else if (offsetCenter > 0)
-		sprintf(string,"%d",offsetCenterPercent);
-		//printf("%d",offsetCenterPercent);
-	else
-		sprintf(string,"%d",offsetCenterPercent);
-		//printf("%d",offsetCenterPercent);
+	}else if (offsetCenter < offsetFront && offsetCenter > -offsetFront){
+		sprintf(string,"%d\n",0); printf("%s","Front");
+	}else if (offsetCenter > 0){
+		sprintf(string,"%d\n",offsetCenterPercent);
+		printf("%d%% %s",offsetCenterPercent,"RIGHT");
+	}else{
+		sprintf(string,"%d\n",offsetCenterPercent);
+		printf("%d%% %s",offsetCenterPercent,"LEFT");
+	}
+	outfile.write (string, strlen(string));
+	outfile.close();
 
-	write(fd,string,O_WRONLY);
-	close(fd);	
 	//trace le cercle
 	cvCircle(temp_frame, cvPoint(milieuX3, milieuY3), 10,  CV_RGB(255, 0,0), 1);
 	//trace la DROITE 3
 	cvLine(temp_frame, cvPoint(milieuX1,milieuY1), cvPoint(milieuX2,milieuY2), CV_RGB(255, 125, 0), 1);
 }
 
-int main(void){
 
-#ifdef USE_VIDEO
-	CvCapture *input_video = cvCreateFileCapture("road.mp4");
-#else
-	CvCapture *input_video = cvCaptureFromCAM(0);
-#endif
+
+int main(void){
+	#ifdef USE_VIDEO
+		CvCapture *input_video = cvCreateFileCapture("road.mp4");
+	#else
+		CvCapture *input_video = cvCaptureFromCAM(0);
+	#endif
 
 	if (input_video == NULL) {
 		fprintf(stderr, "Error: Can't open video\n");
@@ -614,6 +424,7 @@ int main(void){
 
 	long current_frame = 0;
 	int key_pressed = 0;
+
 	IplImage *frame = NULL;
 
 	CvSize frame_size = cvSize(video_size.width-1, video_size.height/2);
@@ -623,13 +434,8 @@ int main(void){
 	IplImage *half_frame = cvCreateImage(cvSize(video_size.width/2, video_size.height/2), IPL_DEPTH_8U, 3);
 
 	CvMemStorage* houghStorage = cvCreateMemStorage(0);
-	/*
-	CvMemStorage* haarStorage = cvCreateMemStorage(0);
-	CvHaarClassifierCascade* cascade = (CvHaarClassifierCascade*)cvLoad("bin/haar/cars3.xml");
-	*/
-	//cvSetCaptureProperty(input_video, CV_CAP_PROP_POS_FRAMES, current_frame);
-	while(key_pressed != 27) {
 
+	while(key_pressed != 27){
 		frame = cvQueryFrame(input_video);
 		if (frame == NULL) {
 			fprintf(stderr, "Error: null frame received\n");
@@ -653,44 +459,27 @@ int main(void){
 		CvSeq* lines = cvHoughLines2(edges, houghStorage, CV_HOUGH_PROBABILISTIC, 
 			rho, theta, HOUGH_TRESHOLD, HOUGH_MIN_LINE_LENGTH, HOUGH_MAX_LINE_GAP);
 
-		//printf("%s\n","");
+		printf("%s\n","");
 		processLanes(lines, edges, temp_frame);
-		
-		// process vehicles
-		/*
-		vehicleDetection(half_frame, cascade, haarStorage);
 
-		drawVehicles(half_frame);
-		cvMoveWindow("Half-frame", half_frame->width*2+10, 0); 
-		*/
-		
-
-
-		// show middle line
+		// compute middle line
 		cvLine(temp_frame, cvPoint(frame_size.width/2,0), cvPoint(frame_size.width/2,frame_size.height), CV_RGB(255, 255, 0), 1);
 
-		//cvShowImage("Grey", grey);
-		//cvShowImage("Edges", edges);
-		cvShowImage("LINES FRAME", temp_frame);
-		cvShowImage("FULL VIDEO", half_frame);
-		cvMoveWindow("LINES FRAME", 0, frame_size.height+25);
-		cvMoveWindow("FULL VIDEO", 0, 2*(frame_size.height+25)); 
 		
-		// move windows
-		/*
-		cvMoveWindow("Grey", 0, 0); 
-		cvMoveWindow("Edges", 0, frame_size.height+25);
-		cvMoveWindow("Color", 0, 2*(frame_size.height+25)); 
-		*/
-
+		#ifdef MONIT
+			//cvShowImage("Grey", grey);
+			//cvShowImage("Edges", edges);
+			cvShowImage("LINES FRAME", temp_frame);
+			cvShowImage("FULL VIDEO", half_frame);
+			cvMoveWindow("LINES FRAME", 0, frame_size.height+25);
+			cvMoveWindow("FULL VIDEO", 0, 2*(frame_size.height+25)); 
+		#endif
 
 		key_pressed = cvWaitKey(5);
+
 	}
 
-	/*
-	cvReleaseHaarClassifierCascade(&cascade);
-	cvReleaseMemStorage(&haarStorage);
-	*/
+
 	cvReleaseMemStorage(&houghStorage);
 
 	cvReleaseImage(&grey);
