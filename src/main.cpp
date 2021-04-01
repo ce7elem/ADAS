@@ -26,7 +26,7 @@
  */
 int main(int argc, char * argv[]) {
 
-  system("rm /tmp/rcontroller /tmp/flyeyesi 2> /dev/null");
+  system("rm /tmp/rcontroller /tmp/flyeyes 2> /dev/null");
 	mkfifo("/tmp/rcontroller", 0666);
 	mkfifo("/tmp/flyeyes", 0666);
 
