@@ -1,5 +1,7 @@
 
 #include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include <opencv2/opencv.hpp>
@@ -385,7 +387,6 @@ void processSide(std::vector<Lane> lanes, IplImage *edges, bool right) {
 	const int BEGINY = 0;
 	const int ENDY = h-1;
 	const int ENDX = right ? (w-BORDERX) : BORDERX;
-	printf("%d fin = %d\n",w/2,ENDX);
 	int midx = w/2;
 	int midy = edges->height/2;
 	unsigned char* ptr = (unsigned char*)edges->imageData;
@@ -450,8 +451,7 @@ void processSide(std::vector<Lane> lanes, IplImage *edges, bool right) {
 
 		bool update_ok = (k_diff <= K_VARY_FACTOR && b_diff <= B_VARY_FACTOR) || side->reset;
 
-		printf("[LIGNE TROUVÉ] side: %s, k vary: %.4f, b vary: %.4f, lost: %s\n", 
-			(right?"RIGHT":"LEFT"), k_diff, b_diff, (update_ok?"no":"yes"));
+		//printf("[LIGNE TROUVÉ] side: %s, k vary: %.4f, b vary: %.4f, lost: %s\n", (right?"RIGHT":"LEFT"), k_diff, b_diff, (update_ok?"no":"yes"));
 		
 		if (update_ok) {
 			// update is in valid bounds
@@ -468,7 +468,7 @@ void processSide(std::vector<Lane> lanes, IplImage *edges, bool right) {
 		}
 
 	} else {
-		printf("[PAS DE LIGNE TROUVÉ] - lane tracking lost! counter increased\n");
+		//printf("[PAS DE LIGNE TROUVÉ] - lane tracking lost! counter increased\n");
 		side->lost++;
 		if (side->lost >= MAX_LOST_FRAMES && !side->reset) {
 			// do full reset when lost for more than N frames
@@ -513,14 +513,15 @@ void processLanes(CvSeq* lines, IplImage* edges, IplImage* temp_frame) {
     }
 
 	// show Hough lines
-	
+	/**
 	for	(int i=0; i<right.size(); i++) {
-		cvLine(temp_frame, right[i].p0, right[i].p1, CV_RGB(0, 0, 255), 2);
+		cvLine(temp_frame, right[i].p0, right[i].p1, CV_RGB(0, 0, 255), 1);
 	}
 
 	for	(int i=0; i<left.size(); i++) {
-		cvLine(temp_frame, left[i].p0, left[i].p1, CV_RGB(255, 0, 0), 2);
+		cvLine(temp_frame, left[i].p0, left[i].p1, CV_RGB(255, 0, 0), 1);
 	}
+	*/
 
 	processSide(left, edges, false);
 	processSide(right, edges, true);
@@ -565,18 +566,26 @@ void processLanes(CvSeq* lines, IplImage* edges, IplImage* temp_frame) {
 	int offsetCenterPercent = (100*offsetCenter)/(temp_frame->width/4);
 
 
-
+	char string[10];
+	int fd = open("/tmp/flyeyes",O_WRONLY);
 	//Si le offset est plus grand que le maximum, met le offset a 0 (TOUT DROITE)
 	if (offsetCenter > maxOffset || offsetCenter < -maxOffset){
-		printf("offsetMax : %d | %s\n",maxOffset,"ERREUR MAX OFFSET REACH");
+		
+		sprintf(string,"%s","ERREUR");
+		//printf("%s","ERREUR");
 		offsetCenter = 0;
 	}else if (offsetCenter < offsetFront && offsetCenter > -offsetFront)
-		printf("offset : %d%% | %s\n",offsetCenterPercent,"FRONT");
+		sprintf(string,"%d",0);
+		//printf("%d",0);
 	else if (offsetCenter > 0)
-		printf("offset : %d%% | %s\n",offsetCenterPercent,"RIGHT");
+		sprintf(string,"%d",offsetCenterPercent);
+		//printf("%d",offsetCenterPercent);
 	else
-		printf("offset : %d%% | %s\n",offsetCenterPercent,"LEFT");
+		sprintf(string,"%d",offsetCenterPercent);
+		//printf("%d",offsetCenterPercent);
 
+	write(fd,string,O_WRONLY);
+	close(fd);	
 	//trace le cercle
 	cvCircle(temp_frame, cvPoint(milieuX3, milieuY3), 10,  CV_RGB(255, 0,0), 1);
 	//trace la DROITE 3
@@ -644,7 +653,7 @@ int main(void){
 		CvSeq* lines = cvHoughLines2(edges, houghStorage, CV_HOUGH_PROBABILISTIC, 
 			rho, theta, HOUGH_TRESHOLD, HOUGH_MIN_LINE_LENGTH, HOUGH_MAX_LINE_GAP);
 
-		printf("%s\n","");
+		//printf("%s\n","");
 		processLanes(lines, edges, temp_frame);
 		
 		// process vehicles
