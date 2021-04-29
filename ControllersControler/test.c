@@ -1,3 +1,12 @@
+/*
+ * A small program for debug purposes
+ * Writes the input in the FIFO given in the first argument
+ * 
+ * syntax : ./test <fifo path>
+ *
+ * author: ob
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>

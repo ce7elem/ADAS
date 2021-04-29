@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <thread>
 
-#include "main.hpp"
 #include "controllers.hpp"
 #include "utils/rang.hpp"
 
