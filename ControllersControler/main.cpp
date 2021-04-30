@@ -22,19 +22,24 @@
  *
  * ### Returns
  *	int : return 0 all the time
+ *	TODO : handle potential errors 
  */
 int main(int argc, char * argv[]) {
 
-  system("rm /tmp/rcontroller /tmp/flyeyes 2> /dev/null");
+	// 1) we clean the last session by removing tmp files
+	// and create new ones
+	system("rm /tmp/rcontroller /tmp/flyeyes 2> /dev/null");
 	mkfifo("/tmp/rcontroller", 0666);
 	mkfifo("/tmp/flyeyes", 0666);
 
-  std::thread rcTread (listenRController);
-  sleep(1);
-  std::thread flyEyesTread (listenFlyEyes);
+	// 2) start listening routines for both rcontroller and autopilot(here named flyEyes)
+	std::thread rcTread (listenRController);
+	sleep(1);
+	std::thread flyEyesTread (listenFlyEyes);
 
-  rcTread.join();                // pauses until first finishes
-  flyEyesTread.join(); 
+	// we dont want to stop until both routines ended
+	rcTread.join();
+	flyEyesTread.join(); 
   
 	std::cout << "End" << std::endl;
 
